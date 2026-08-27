@@ -16,7 +16,7 @@ All inference was performed locally through `llama_cpp`.
 
 ## Scope & Reproducibility
 
-**Disclaimer: My Testing, My Findings, My Hardware.** 
+**Disclaimer: My Testing, My Findings, My Hardware.**
 This benchmark represents independent testing executed strictly on a specific consumer-tier hardware configuration. Local LLM inference is highly sensitive to hardware constraints, particularly VRAM capacity, memory bandwidth, and offload distribution. The generation speeds, failure modes, and VRAM thrashing behaviors observed here are a direct result of this specific environment. **Your results may differ** depending on your silicon, system RAM, and quantization build.
 
 ---
@@ -51,7 +51,7 @@ To isolate the effect of extreme quantization, the 27B tests directly compare tw
 
 ## SQLAlchemy Structure (27B IQ1_S)
 
-**Task Description:** Generate a SQLAlchemy `User` model with an integer primary key, unique username, unique email, and a `created_at` default. 
+**Task Description:** Generate a SQLAlchemy `User` model with an integer primary key, unique username, unique email, and a `created_at` default.
 
 | Metric | Result |
 |---|---:|
@@ -103,16 +103,17 @@ To test the algorithmic boundaries and constraint adherence across the configura
 | `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | All models succeed on simple logic. |
 | `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | All models handle basic math and checks. |
 | `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 stumbles; Q6 & Q4 remain perfect. |
-| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ❌ **Failed (Logic Collapse)** | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** Both IQ1 and Q6 fail the full `schedule_jobs` specification under extreme constraint density; only the ~4-bit configuration executes the algorithm correctly. |
+| `schedule_jobs` (Complex) | 💀 Fatal Breakdown | ❌ Failed (Logic Collapse) | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** Both IQ1 and Q6 fail the full `schedule_jobs` specification under extreme constraint density; only the ~4-bit configuration executes the algorithm correctly. |
 
 ## The `schedule_jobs` Stress Test
 
 The models were asked to implement a stateful job scheduler involving validation, duplicate ID filtering, priority fallbacks, stable sorting, capacity checks, and deterministic output.
 
 **Behavioral Breakdown:**
-- **27B IQ1_S (34.61 tok/s):** The generation completely collapsed. It added a forbidden helper function, reversed the required sorting order, hallucinated logic (`min_count/sorted(set(...))`), and failed to complete the assignment loop entirely.
-- **7B Q6_K (57.79 tok/s):** Produced code rapidly but failed structurally. It mutated the original input dictionary (violating strict immutability constraints), implemented a fatal slicing error for duplicate checks that guarantees a `TypeError` for opaque IDs, failed the stable sorting logic (due to a variable scope leak in the lambda function), and completely ignored the lowest-load worker selection algorithm.
-- **27B ~4-bit (2.60 tok/s):** Produced a complete, 327-token executable algorithm. All core constraints and sorting logic were perfectly maintained.
+
+- **27B IQ1_S** (34.61 tok/s): The generation completely collapsed. It added a forbidden helper function, reversed the required sorting order, hallucinated logic (`min_count`/`sorted(set(...))`), and failed to complete the assignment loop entirely.
+- **7B Q6_K** (57.79 tok/s): Produced code rapidly but failed structurally. It mutated the original input dictionary (violating strict immutability constraints), implemented a fatal slicing error for duplicate checks that guarantees a `TypeError` for opaque IDs, failed the stable sorting logic (due to a variable scope leak in the lambda function), and completely ignored the lowest-load worker selection algorithm.
+- **27B ~4-bit** (2.60 tok/s): Produced a complete, 327-token executable algorithm. All core constraints and sorting logic were perfectly maintained.
 
 **Observation:** The benchmark reveals a "threshold effect" rather than a linear degradation. IQ1_S and 7B Q6_K are fully capable of writing simple, localized Python snippets. However, as the prompt lengthens and the "constraint density" (the number of rules the model must hold in its attention simultaneously) increases to 19 explicit rules, both lower-tier configurations suffer a catastrophic quality cliff. Only the ~4-bit model maintains the base model's true capability and holds all constraints in memory, albeit at a severe speed penalty.
 
@@ -122,7 +123,7 @@ The models were asked to implement a stateful job scheduler involving validation
 
 ## Independent `/orders` Constraint Test
 
-A new, independently designed FastAPI/Pydantic task was used to test whether the observed behavior generalized beyond the `inventory` TaskBot prompt. 
+A new, independently designed FastAPI/Pydantic task was used to test whether the observed behavior generalized beyond the `inventory` TaskBot prompt.
 
 The task required:
 - Exactly two imports
@@ -150,14 +151,14 @@ The task required:
 
 # Part 4 — Bonus Round: The Meta-Test (Q4 Capability Showcase)
 
-To demonstrate the absolute constraint ceiling of the 27B ~4-bit configuration, it was tasked with a "meta-test"—writing a complete `llama_cpp` local LLM runner script to execute other models. This prompt enforced extreme density regarding exact parameter binding, robust error handling, and deep dictionary slicing. 
+To demonstrate the absolute constraint ceiling of the 27B ~4-bit configuration, it was tasked with a "meta-test" — writing a complete `llama_cpp` local LLM runner script to execute other models. This prompt enforced extreme density regarding exact parameter binding, robust error handling, and deep dictionary slicing.
 
 **The Exact Prompt:**
-> "Write ONLY the raw Python code. Do not explain, do not add comments outside the code. Implement exactly this function: def run_local_llm(model_path: str, prompt: str, max_tokens: int, temperature: float) -> str: The function must initialize and run a local LLM using the llama_cpp library while preserving all explicitly required rules. 1. Import 'Llama' from 'llama_cpp' at the top of the file. 2. If model_path is an empty string, return an empty string immediately. 3. Initialize the Llama model instance using the provided model_path. You must explicitly set n_gpu_layers=-1 and n_ctx=4096. 4. Invoke the model instance with the provided prompt, max_tokens, and temperature. You must set echo=False. 5. Extract the generated text from the returned dictionary. The text is located exactly at response['choices'][0]['text']. 6. Return the extracted text string, completely stripped of leading and trailing whitespace. 7. Wrap the initialization and inference in a try-except block. If ANY exception occurs, catch it and return exactly the string 'ERROR'. ARCHITECTURE STRICTLY DEFINED BY THE ARCHITECT: Do not add any other imports. Do not add classes. Do not add helper functions. Do not change the function signature. Do not add markdown fences. CRITICAL COMMAND: Output ONLY the complete raw Python implementation. No explanations. No analysis. No markdown. No omitted sections."
+> "Write ONLY the raw Python code. Do not explain, do not add comments outside the code. Implement exactly this function: `def run_local_llm(model_path: str, prompt: str, max_tokens: int, temperature: float) -> str:` The function must initialize and run a local LLM using the llama_cpp library while preserving all explicitly required rules. 1. Import 'Llama' from 'llama_cpp' at the top of the file. 2. If model_path is an empty string, return an empty string immediately. 3. Initialize the Llama model instance using the provided model_path. You must explicitly set n_gpu_layers=-1 and n_ctx=4096. 4. Invoke the model instance with the provided prompt, max_tokens, and temperature. You must set echo=False. 5. Extract the generated text from the returned dictionary. The text is located exactly at response['choices'][0]['text']. 6. Return the extracted text string, completely stripped of leading and trailing whitespace. 7. Wrap the initialization and inference in a try-except block. If ANY exception occurs, catch it and return exactly the string 'ERROR'. ARCHITECTURE STRICTLY DEFINED BY THE ARCHITECT: Do not add any other imports. Do not add classes. Do not add helper functions. Do not change the function signature. Do not add markdown fences. CRITICAL COMMAND: Output ONLY the complete raw Python implementation. No explanations. No analysis. No markdown. No omitted sections."
 
 **Behavioral Breakdown (27B ~4-bit):**
 - **Throughput:** 2.24 tok/s (125 tokens in 55.82s).
-- **Code Quality:** Clinically perfect Python. Flawless parameter binding (`n_gpu_layers=-1`, `n_ctx=4096`, `echo=False`), exact dictionary slicing (`response['choices'][0]['text']`), and a robust `try-except` fallback. 
+- **Code Quality:** Clinically perfect Python. Flawless parameter binding (`n_gpu_layers=-1`, `n_ctx=4096`, `echo=False`), exact dictionary slicing (`response['choices'][0]['text']`), and a robust try-except fallback.
 - **Instruction Adherence:** ~99%. It successfully omitted the opening markdown fence and conversational filler, though it leaked a trailing ` ``` ` backtick at the very end. Functionally and structurally, the code is production-ready.
 
 **Observation:** When throughput is not a strict requirement, the 27B ~4-bit tier serves as a highly capable, autonomous system architect capable of handling dense configuration rules without logic drift.
@@ -168,9 +169,9 @@ To demonstrate the absolute constraint ceiling of the 27B ~4-bit configuration, 
 
 | Model | Speed | Code Reliability | Role / Practical Result |
 |---|---:|:---|:---|
-| **27B IQ1_S** | ~29–37 t/s | ❌ Unstable; fails the "Complexity Cliff" | **Retired** |
-| **7B Q6_K** | ~54–60 t/s | ⚠️ Reliable for most tasks, but fails extreme constraint density | **Production** |
-| **27B ~4-bit** | ~1.6–2.6 t/s | 🟢 Highest observed fidelity & exactness | **Quality Reference** |
+| **27B IQ1_S** | ~29–37 t/s | ❌ Unstable; fails the "Complexity Cliff" | Retired |
+| **7B Q6_K** | ~54–60 t/s | ⚠️ Reliable for most tasks, but fails extreme constraint density | Production |
+| **27B ~4-bit** | ~1.6–2.6 t/s | 🟢 Highest observed fidelity & exactness | Quality Reference |
 
 ---
 
@@ -183,22 +184,22 @@ The 27B model was substantially larger than the 7B model, but extreme IQ1 quanti
 Quantization creates a non-linear degradation in performance. The 7B Q6_K and 27B IQ1_S models succeed on short, simple tasks, but rapidly break down as constraint density increases (e.g., 19 explicit rules in the `schedule_jobs` stress test). The 27B ~4-bit model was the only configuration to survive the cliff.
 
 ## 3. At the tested IQ1_S configuration, basic Python code reliability was severely degraded
-Because the IQ4_XS and IQ1_S models are quantized variants of the same base model, the large reliability gap strongly implicates extreme quantization as the primary factor in the observed degradation. The IQ1_S model repeatedly produced non-executable code in the tested tasks, including missing required imports and treating `__dict__` as a callable method. 
+Because the IQ4_XS and IQ1_S models are quantized variants of the same base model, the large reliability gap strongly implicates extreme quantization as the primary factor in the observed degradation. The IQ1_S model repeatedly produced non-executable code in the tested tasks, including missing required imports and treating `__dict__` as a callable method.
 
 ## 4. Latency and token count are useless without correctness
-The models failing the stress tests produced efficient-looking outputs rapidly (30-58 tok/s) that consistently violated strict architectural constraints and executable safety. A high throughput rate is irrelevant if the resulting code throws a `TypeError` or `NameError`.
+The models failing the stress tests produced efficient-looking outputs rapidly (30–58 tok/s) that consistently violated strict architectural constraints and executable safety. A high throughput rate is irrelevant if the resulting code throws a `TypeError` or `NameError`.
 
 ## 5. Instruction deviations are task-dependent rather than invariant
 The 7B Q6_K model deviated from restrictive instructions in some earlier tests by adding framework conventions such as `HTTPException`, and broke entirely under extreme algorithmic density (`schedule_jobs`). However, the `/orders` test proved it can follow strict architectural constraints exactly when the complexity is balanced. The 7B model acts as a highly capable specialist, capable of both strict and convention-driven behavior depending on the constraint density.
 
 ## 6. The ~4-bit tier demonstrates retained capability; hardware is the limiting factor
-The 27B ~4-bit configuration produced correct, instruction-exact code in all complex tests (`TaskBot`, `/orders`, `schedule_jobs`, and the `llama_cpp` meta-test). No fundamental code-generation failure was observed. Its practical limitation was throughput: approximately 1.6–2.6 tok/s with partial CPU offload on the 8GB VRAM / 16GB RAM test system. In this benchmark, the ~4-bit tier passed the correctness requirement but did not meet the throughput requirement for the intended high-volume workload on this hardware.
+The 27B ~4-bit configuration produced correct, instruction-exact code in all complex tests (TaskBot, `/orders`, `schedule_jobs`, and the `llama_cpp` meta-test). No fundamental code-generation failure was observed. Its practical limitation was throughput: approximately 1.6–2.6 tok/s with partial CPU offload on the 8GB VRAM / 16GB RAM test system. In this benchmark, the ~4-bit tier passed the correctness requirement but did not meet the throughput requirement for the intended high-volume workload on this hardware.
 
 ---
 
 # Final Result
 
-The benchmark does not show a simple relationship between parameter count, quantization level, and practical usefulness. 
+The benchmark does not show a simple relationship between parameter count, quantization level, and practical usefulness.
 
 Instead, the three configurations occupy fundamentally different operating points:
 
@@ -215,14 +216,14 @@ Instead, the three configurations occupy fundamentally different operating point
                        │ ██
                        └────────────────────────► PRACTICAL THROUGHPUT
 
-                       2.3     55       33 tok/s
-                     ~4-bit    Q6       IQ1
+                       2.3      55       33 tok/s
+                      ~4-bit    Q6       IQ1
 ```
 
-*   **27B ~4-bit:** Highest observed reliability and fidelity, surviving extreme constraint density and serving as the maximum capability reference, but fundamentally hardware-limited.
-*   **7B Q6_K:** Best production throughput / reliability balance, delivering ~54–60 t/s. While it collapses under extreme algorithmic stress testing, it produces highly reliable and specification-compliant code for standard production workloads.
-*   **27B IQ1_S:** Unacceptable reliability despite higher throughput, repeatedly failing strict code-generation tasks with non-executable output and collapsing under algorithmic complexity.
+- **27B ~4-bit:** Highest observed reliability and fidelity, surviving extreme constraint density and serving as the maximum capability reference, but fundamentally hardware-limited.
+- **7B Q6_K:** Best production throughput / reliability balance, delivering ~54–60 t/s. While it collapses under extreme algorithmic stress testing, it produces highly reliable and specification-compliant code for standard production workloads.
+- **27B IQ1_S:** Unacceptable reliability despite higher throughput, repeatedly failing strict code-generation tasks with non-executable output and collapsing under algorithmic complexity.
 
-For Patchsmith's asynchronous batch requirement, the `Qwen2.5-Coder-7B-Instruct-Q6_K` is selected for production, provided tasks are scoped below its constraint density failure threshold. 
+For Patchsmith's asynchronous batch requirement, the `Qwen2.5-Coder-7B-Instruct-Q6_K` is selected for production, provided tasks are scoped below its constraint density failure threshold.
 
-> **We optimize for correct code per second, not tokens per second.**
+**We optimize for correct code per second, not tokens per second.**
