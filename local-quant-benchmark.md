@@ -154,7 +154,7 @@ To test the boundaries of IQ1_S's code generation, it was subjected to an escala
 |---|---|---|---|---|
 | `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | IQ1 succeeds on simple logic. |
 | `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | IQ1 handles basic math and checks. |
-| `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | N/A | IQ1 struggles slightly but recovers. |
+| `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 struggles slightly but recovers. |
 | `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | N/A | ✅ Correct (~2.6 t/s) | **The Complexity Cliff.** |
 
 ## The `schedule_jobs` Stress Test
