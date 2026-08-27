@@ -155,7 +155,7 @@ To test the algorithmic boundaries and constraint adherence across the configura
 | `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | All models succeed on simple logic. |
 | `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | All models handle basic math and checks. |
 | `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 stumbles; Q6 & Q4 remain perfect. |
-| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | N/A | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** IQ1 collapses under constraint density; ~4-bit executes flawlessly. |
+| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ❌ **Failed (Logic Collapse)** | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** Both IQ1 and Q6 collapse under extreme constraint density; only ~4-bit executes flawlessly. |
 
 ## The `schedule_jobs` Stress Test
 
@@ -163,9 +163,10 @@ The models were asked to implement a stateful job scheduler involving validation
 
 **Behavioral Breakdown:**
 - **27B IQ1_S (34.61 tok/s):** The generation completely collapsed. It added a forbidden helper function, reversed the required sorting order, hallucinated logic (`min_count/sorted(set(...))`), and failed to complete the assignment loop entirely.
+- **7B Q6_K (57.79 tok/s):** Produced code rapidly but failed structurally. It mutated the original input dictionary (violating strict immutability constraints), implemented a fatal slicing error for duplicate checks that guarantees a `TypeError` for opaque IDs, failed the stable sorting logic (due to a variable scope leak in the lambda function), and completely ignored the lowest-load worker selection algorithm.
 - **27B ~4-bit (2.60 tok/s):** Produced a complete, 327-token executable algorithm. All core constraints and sorting logic were perfectly maintained.
 
-**Observation:** The benchmark reveals a "threshold effect" rather than a linear degradation. IQ1_S is fully capable of writing simple, localized Python snippets. However, as the prompt lengthens and the "constraint density" (the number of rules the model must hold in its attention simultaneously) increases, IQ1 suffers a catastrophic quality cliff. The ~4-bit model maintains the base model's true capability and holds all constraints in memory, albeit at a severe speed penalty.
+**Observation:** The benchmark reveals a "threshold effect" rather than a linear degradation. IQ1_S and 7B Q6_K are fully capable of writing simple, localized Python snippets. However, as the prompt lengthens and the "constraint density" (the number of rules the model must hold in its attention simultaneously) increases to 19 explicit rules, both lower-tier configurations suffer a catastrophic quality cliff. Only the ~4-bit model maintains the base model's true capability and holds all constraints in memory, albeit at a severe speed penalty.
 
 ---
 
@@ -173,7 +174,7 @@ The models were asked to implement a stateful job scheduler involving validation
 
 ## Independent `/orders` Constraint Test
 
-A new, independently designed FastAPI/Pydantic task was used to test whether the observed three-way behavior generalized beyond the `inventory` TaskBot prompt. 
+A new, independently designed FastAPI/Pydantic task was used to test whether the observed behavior generalized beyond the `inventory` TaskBot prompt. 
 
 The task required:
 - Exactly two imports
@@ -195,7 +196,7 @@ The task required:
 - **27B IQ1_S:** Omitted two explicitly required imports (`BaseModel` and `Field`) while still using both symbols in the code, producing a non-executable script that guarantees a `NameError`. It also emitted a `<think>` block despite the code-only instruction.
 - **27B IQ4_XS:** Produced a complete and exact implementation with all requested imports, constraints, arithmetic, conditional logic, and response fields. No unrequested logic was introduced.
 
-**Observation:** The independent test reproduces the same broad pattern seen in the earlier experiments: the IQ4_XS configuration retains strong code-generation capability but is severely throughput-limited on the available hardware, while IQ1_S remains substantially less reliable despite its higher generation speed. Crucially, the 7B model followed the specification closely and added no unrequested framework behavior in this run.
+**Observation:** The independent test reproduces the same broad pattern seen in the earlier experiments: the IQ4_XS configuration retains strong code-generation capability but is severely throughput-limited on the available hardware, while IQ1_S remains substantially less reliable despite its higher generation speed. Crucially, the 7B model followed the specification closely on this mid-level complexity task and added no unrequested framework behavior in this run.
 
 ---
 
@@ -204,7 +205,7 @@ The task required:
 | Model | Speed | Code Reliability | Role / Practical Result |
 |---|---:|:---|:---|
 | **27B IQ1_S** | ~29–37 t/s | ❌ Unstable; fails the "Complexity Cliff" | **Retired** |
-| **7B Q6_K** | ~54–60 t/s | ✅ Reliable; highly capable specialist | **Production** |
+| **7B Q6_K** | ~54–60 t/s | ⚠️ Reliable for most tasks, but fails extreme constraint density | **Production** |
 | **27B ~4-bit** | ~1.6–2.6 t/s | 🟢 Highest observed fidelity & exactness | **Quality Reference** |
 
 ---
@@ -212,19 +213,19 @@ The task required:
 # Key Findings
 
 ## 1. Parameter count is not a sufficient indicator of quality
-The 27B model was substantially larger than the 7B model, but IQ1 quantization introduced severe generation instability. 
+The 27B model was substantially larger than the 7B model, but extreme IQ1 quantization introduced severe generation instability, rendering it worse than a smaller 6-bit model on many tasks.
 
 ## 2. The "Complexity Cliff"
-The extreme 1-bit quantization creates a non-linear degradation in performance. The model succeeds on short, simple tasks, but rapidly breaks down as constraint density increases (`schedule_jobs`, `/orders`).
+Quantization creates a non-linear degradation in performance. The 7B Q6_K and 27B IQ1_S models succeed on short, simple tasks, but rapidly break down as constraint density increases (e.g., 19 explicit rules in the `schedule_jobs` stress test). The 27B ~4-bit model was the only configuration to survive the cliff.
 
 ## 3. At the tested IQ1_S configuration, basic Python code reliability was severely degraded
 Because the IQ4_XS and IQ1_S models are quantized variants of the same base model, the large reliability gap strongly implicates extreme quantization as the primary factor in the observed degradation. The IQ1_S model repeatedly produced non-executable code in the tested tasks, including missing required imports and treating `__dict__` as a callable method. 
 
 ## 4. Latency and token count are useless without correctness
-The IQ1 model produced efficient-looking short outputs that consistently violated strict architectural constraints and executable safety. A high throughput rate is irrelevant if the resulting code throws a `NameError`.
+The models failing the stress tests produced efficient-looking outputs rapidly (30-58 tok/s) that consistently violated strict architectural constraints and executable safety. A high throughput rate is irrelevant if the resulting code throws a `TypeError` or `NameError`.
 
 ## 5. Instruction deviations are task-dependent rather than invariant
-The 7B Q6_K model deviated from restrictive instructions in some earlier tests by adding framework conventions such as `HTTPException`. However, the later `/orders` test followed the restrictive architecture exactly. The benchmark therefore does not support treating these deviations as an invariant property of the model. The practical conclusion is that the 7B model acts as a highly capable specialist, capable of both strict and convention-driven behavior depending on the task and prompt structure.
+The 7B Q6_K model deviated from restrictive instructions in some earlier tests by adding framework conventions such as `HTTPException`, and broke entirely under extreme algorithmic density (`schedule_jobs`). However, the `/orders` test proved it can follow strict architectural constraints exactly when the complexity is balanced. The 7B model acts as a highly capable specialist, capable of both strict and convention-driven behavior depending on the constraint density.
 
 ## 6. The ~4-bit tier demonstrates retained capability; hardware is the limiting factor
 The 27B ~4-bit configuration produced correct, instruction-exact code in all complex tests (`TaskBot`, `/orders`, `schedule_jobs`). No fundamental code-generation failure was observed. Its practical limitation was throughput: approximately 1.6–2.6 tok/s with partial CPU offload on the 8GB VRAM / 16GB RAM test system. In this benchmark, the ~4-bit tier passed the correctness requirement but did not meet the throughput requirement for the intended high-volume workload on this hardware.
@@ -244,22 +245,20 @@ Instead, the three configurations occupy fundamentally different operating point
                        │          ██████████
                        │
                        │    7B Q6_K
-                       │      ████████
+                       │      ██████
                        │
                        │ IQ1_S
-                       │ ████
+                       │ ██
                        └────────────────────────► PRACTICAL THROUGHPUT
 
                        2.3     55       33 tok/s
                      ~4-bit    Q6       IQ1
 ```
 
-*   **27B ~4-bit:** Highest observed reliability and fidelity, serving as the maximum capability reference, but fundamentally hardware-limited.
-*   **7B Q6_K:** Best production throughput / reliability balance, delivering ~54–60 t/s while producing executable and, in the independent `/orders` validation, fully specification-compliant code.
+*   **27B ~4-bit:** Highest observed reliability and fidelity, surviving extreme constraint density and serving as the maximum capability reference, but fundamentally hardware-limited.
+*   **7B Q6_K:** Best production throughput / reliability balance, delivering ~54–60 t/s. While it collapses under extreme algorithmic stress testing, it produces highly reliable and specification-compliant code for standard production workloads.
 *   **27B IQ1_S:** Unacceptable reliability despite higher throughput, repeatedly failing strict code-generation tasks with non-executable output and collapsing under algorithmic complexity.
 
-The most critical finding is not merely that the 7B model won the production slot. In this benchmark and on this hardware/runtime configuration, the extreme IQ1_S quantization degraded the observed code-generation reliability disproportionately to its throughput advantage. The IQ1 configuration delivered ~33 tok/s of unreliable, frequently non-executable code, while the 7B Q6 delivered ~56 tok/s of reliable, structurally sound code.
-
-For Patchsmith's asynchronous batch requirement, the `Qwen2.5-Coder-7B-Instruct-Q6_K` is selected for production.
+For Patchsmith's asynchronous batch requirement, the `Qwen2.5-Coder-7B-Instruct-Q6_K` is selected for production, provided tasks are scoped below its constraint density failure threshold. 
 
 > **We optimize for correct code per second, not tokens per second.**
