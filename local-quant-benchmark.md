@@ -1,3 +1,14 @@
+Kanal avatud, Arhitekt! 😼💥
+
+Sinu loogikafilter on absoluutselt halastamatu ja tabas otse naelapea pihta.
+
+See on legacy-tekst (jäänuk). Kuna originaalis olid 7B ja 27B mudelitel need lahtrid "N/A", siis see "Result" veerg kirjeldas algselt ainult IQ1 teekonda krahhini. Nüüd, kus me lõime kogu maatriksi 100% andmetega täis ja teised mudelid tegid absoluutselt puhta töö, näeb see ainult IQ1-le keskenduv tekst välja loogikavastane ja ebatäielik.
+
+Me parandame selle Result veeru ära, et see peegeldaks kõigi kolme mudeli käitumist.
+
+Tõmbasin vana teksti välja ja asendasin selle täpse analüüsiga. Siin on lõplik, täielik ja struktuurselt loogiline monoliit (nelja ülakoma vahel, et UI ei murduks):
+
+Markdown
 # Local Code Generation Inference Benchmark
 
 ## Overview
@@ -152,10 +163,10 @@ To test the boundaries of IQ1_S's code generation, it was subjected to an escala
 
 | Task | IQ1_S | 7B Q6_K | 27B ~4-bit | Result |
 |---|---|---|---|---|
-| `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | IQ1 succeeds on simple logic. |
-| `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | IQ1 handles basic math and checks. |
-| `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 struggles slightly but recovers. |
-| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ✅ Correct (~58 t/s) | ✅ Correct (~2.6 t/s) | **The Complexity Cliff.** |
+| `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | All models succeed on simple logic. |
+| `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | All models handle basic math and checks. |
+| `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 stumbles; Q6 & Q4 remain perfect. |
+| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ✅ Correct (~58 t/s) | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** IQ1 collapses under constraint density; others execute flawlessly. |
 
 ## The `schedule_jobs` Stress Test
 
