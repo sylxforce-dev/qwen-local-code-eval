@@ -47,59 +47,7 @@ To isolate the effect of extreme quantization, the 27B tests directly compare tw
 
 ---
 
-# Part 1 — Token Bucket (Algorithmic Logic)
-
-Every model in this part received the exact same prefix/prompt to complete:
-
-**The Prompt / Input:**
-```python
-import time
-
-class TokenBucket:
-    def __init__(self, capacity: int, refill_rate: int):
-        self.capacity = capacity
-        self.tokens = capacity
-        self.refill_rate = refill_rate
-        self.last_refill = time.time()
-
-    def consume(self, amount: int) -> bool:
-        # Calculate elapsed time
-        # Refill tokens according to refill_rate
-        # Do not exceed capacity
-        # Update last_refill
-        # Consume tokens when sufficient
-        pass
-```
-
-## The IQ1_S Baseline (Forced Thinking)
-
-The 1-bit quantized model (27B IQ1_S) was evaluated on its default reasoning path to establish a baseline.
-
-| Metric | Result |
-|---|---:|
-| Latency | ~242 s |
-| Generated tokens | 7,973 |
-| Throughput | 32.95 tok/s |
-| Correct completion | ❌ Failed |
-
-**Observation:** The model demonstrated enough knowledge to identify the intended algorithm but failed to converge efficiently. It was caught in an infinite loop of reconsidering its own plan. The primary failure mode was **repetitive reasoning**, not lack of basic programming knowledge.
-
-## Dedicated Code Model (7B Q6_K)
-
-Instruct mode, temperature 0.2.
-
-| Metric | Result |
-|---|---:|
-| Latency | 2.51 s |
-| Generated tokens | 147 |
-| Throughput | 58.52 tok/s |
-| Correct completion | ✅ Yes |
-
-**Observation:** Successful completion on the first generation. All six required behaviors implemented correctly, no repetition, no reasoning runaway, no prompt manipulation needed.
-
----
-
-# Part 2 — Structural & Framework Constraints
+# Part 1 — Structural & Framework Constraints
 
 ## SQLAlchemy Structure (27B IQ1_S)
 
@@ -146,7 +94,7 @@ Thinking disabled entirely. The exact same highly restrictive prompt was run acr
 
 ---
 
-# Part 3 — The Complexity Cliff
+# Part 2 — The Complexity Cliff
 
 To test the algorithmic boundaries and constraint adherence across the configurations, they were subjected to an escalating series of tasks.
 
@@ -170,7 +118,7 @@ The models were asked to implement a stateful job scheduler involving validation
 
 ---
 
-# Part 4 — Independent Cross-Validation
+# Part 3 — Independent Cross-Validation
 
 ## Independent `/orders` Constraint Test
 
