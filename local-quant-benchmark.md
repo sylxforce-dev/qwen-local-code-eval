@@ -1,5 +1,3 @@
-
-
 # Local Code Generation Inference Benchmark
 
 ## Overview
@@ -150,14 +148,14 @@ Thinking disabled entirely. The exact same highly restrictive prompt was run acr
 
 # Part 3 — The Complexity Cliff
 
-To test the boundaries of IQ1_S's code generation, it was subjected to an escalating series of algorithmic tasks.
+To test the algorithmic boundaries and constraint adherence across the configurations, they were subjected to an escalating series of tasks.
 
 | Task | IQ1_S | 7B Q6_K | 27B ~4-bit | Result |
 |---|---|---|---|---|
 | `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | All models succeed on simple logic. |
 | `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | All models handle basic math and checks. |
 | `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 stumbles; Q6 & Q4 remain perfect. |
-| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ✅ Correct (~58 t/s) | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** IQ1 collapses under constraint density; others execute flawlessly. |
+| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | N/A | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** IQ1 collapses under constraint density; ~4-bit executes flawlessly. |
 
 ## The `schedule_jobs` Stress Test
 
