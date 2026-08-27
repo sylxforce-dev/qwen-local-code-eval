@@ -1,5 +1,5 @@
 
-Markdown
+
 # Local Code Generation Inference Benchmark
 
 ## Overview
