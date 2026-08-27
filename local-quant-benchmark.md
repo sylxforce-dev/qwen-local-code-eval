@@ -103,7 +103,7 @@ To test the algorithmic boundaries and constraint adherence across the configura
 | `calculate_retry_delay` | ✅ Correct (~28 t/s) | ✅ Correct (~53 t/s) | ✅ Correct (~1.6 t/s) | All models succeed on simple logic. |
 | `reserve_capacity` | ✅ Correct (~28 t/s) | ✅ Correct (~55 t/s) | ✅ Correct (~2.3 t/s) | All models handle basic math and checks. |
 | `allocate_workers` | ⚠️ Passed on retry | ✅ Correct (~55 t/s) | ✅ Correct (~2.0 t/s) | IQ1 stumbles; Q6 & Q4 remain perfect. |
-| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ❌ **Failed (Logic Collapse)** | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** Both IQ1 and Q6 collapse under extreme constraint density; only ~4-bit executes flawlessly. |
+| `schedule_jobs` (Complex) | 💀 **Fatal Breakdown** | ❌ **Failed (Logic Collapse)** | ✅ Correct (~2.6 t/s) | **The Complexity Cliff:** Both IQ1 and Q6 fail the full `schedule_jobs` specification under extreme constraint density; only the ~4-bit configuration executes the algorithm correctly. |
 
 ## The `schedule_jobs` Stress Test
 
